@@ -1,61 +1,195 @@
-import React, { createContext, useContext } from 'react'
+import React, { createContext, useContext, useState } from 'react';
 
-const DatabaseContext = createContext()
+const DatabaseContext = createContext();
 
-export const useDatabase = () => {
-  const context = useContext(DatabaseContext)
-  if (!context) {
-    throw new Error('useDatabase must be used within a DatabaseProvider')
+export const useDatabase = () => useContext(DatabaseContext);
+
+// This is our initial fake database data.
+const initialSampleAlerts = [
+  {
+    id: 1,
+    title: 'Severe Cyclonic Storm Warning',
+    description: 'A severe cyclonic storm is expected to make landfall. Strong winds and heavy rain likely; secure loose objects and follow evacuation orders.',
+    severity: 'critical',
+    location: 'Odisha Coast',
+    alert_type: 'weather',
+    source: 'India Meteorological Department (IMD)',
+    lat: 19.820664,
+    lng: 85.906167,
+    created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(), // 5 mins ago
+    active: true,
+  },
+  {
+    id: 2,
+    title: 'Flash Flood Alert',
+    description: 'Intense rainfall has caused water levels to rise rapidly in low-lying areas. Avoid flooded roads and move to higher ground if necessary.',
+    severity: 'high',
+    location: 'Assam (Brahmaputra basin)',
+    alert_type: 'flood',
+    source: 'State Disaster Management Authority',
+    lat: 26.200557,
+    lng: 92.937576,
+    created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 mins ago
+    active: true,
+  },
+  {
+    id: 3,
+    title: 'Forest Fire Evacuation Notice',
+    description: 'Rapid spread of wildfires in hill slopes. Immediate evacuation advised for nearby settlements.',
+    severity: 'high',
+    location: 'Uttarakhand - Chamoli District',
+    alert_type: 'wildfire',
+    source: 'Forest Department',
+    lat: 30.7183,
+    lng: 79.5157,
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
+    active: true,
+  },
+  {
+    id: 4,
+    title: 'Widespread Power Outage',
+    description: 'Power supply disrupted across multiple wards due to grid damage. Crews are working on restoration; expect intermittent outages.',
+    severity: 'medium',
+    location: 'Mumbai Suburban',
+    alert_type: 'infrastructure',
+    source: 'Local Electricity Distribution Company',
+    lat: 19.075984,
+    lng: 72.877656,
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(), // 5 hours ago
+    active: true,
+  },
+  {
+    id: 5,
+    title: 'Urban Flooding and Road Closures',
+    description: 'Heavy overnight rains have caused flooding in low-lying areas and major arterial roads. Commuters should avoid vulnerable routes.',
+    severity: 'high',
+    location: 'Hyderabad (GHMC area)',
+    alert_type: 'flood',
+    source: 'Greater Hyderabad Municipal Corporation (GHMC)',
+    lat: 17.385044,
+    lng: 78.486671,
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(), // 6 hours ago
+    active: true,
+  },
+  {
+    id: 6,
+    title: 'Coastal Evacuation Advisory',
+    description: 'High tidal surges expected along the coastline. Coastal residents should move to temporary shelters until the advisory is lifted.',
+    severity: 'critical',
+    location: 'Chennai Coastline',
+    alert_type: 'storm_surge',
+    source: 'IMD / Local Authorities',
+    lat: 13.082680,
+    lng: 80.270721,
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(), // 12 hours ago
+    active: true,
   }
-  return context
-}
+];
 
+// This component will provide the database functions to the rest of the app.
 export const DatabaseProvider = ({ children }) => {
+  // Use state to make our mock database mutable (for INSERTs)
+  const [alerts, setAlerts] = useState(initialSampleAlerts);
+
+  // This function pretends to run a SQL query with more realistic logic.
   const executeQuery = async (query, params = []) => {
-    try {
-      const response = await fetch('https://builder.empromptu.ai/api_tools/templates/call_postgres', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer 5254d3137bc61704d35e86e9e22c6bc6',
-          'X-Generated-App-ID': '7f6707a3-47ec-40c3-ad3f-1eb7f4da4ffb',
-          'X-Usage-Key': 'cbdf28b6a6e122cf39846203916f8199'
-        },
-        body: JSON.stringify({ query, params })
-      })
+    console.log("Executing mock query:", query.trim().split('\n')[0], "...");
 
-      const result = await response.json()
-      return result
-    } catch (error) {
-      console.error('Database query error:', error)
-      return { success: false, error: error.message }
+    const upperQuery = query.trim().toUpperCase();
+
+    // Handle COUNT queries
+    if (upperQuery.startsWith('SELECT COUNT(*)')) {
+        return Promise.resolve({ success: true, data: [{ count: alerts.length }] });
+    }
+
+    // Handle INSERT queries
+    if (upperQuery.startsWith('INSERT INTO')) {
+        const newAlert = {
+            id: Date.now(),
+            title: params[0],
+            description: params[1],
+            severity: params[2],
+            location: params[3],
+            alert_type: params[4],
+            source: params[5],
+            created_at: new Date().toISOString(),
+            active: true,
+        };
+
+        // Add additional fields based on parameter count and content
+        if (params.length > 6) {
+          newAlert.image_url = params[6];
+        }
+        if (params.length > 7) {
+          newAlert.age = params[7];
+        }
+        if (params.length > 8) {
+          newAlert.gender = params[8];
+        }
+        if (params.length > 9) {
+          newAlert.last_seen_date = params[9];
+        }
+        // Handle lost items with different structure
+        if (params.length === 9 && params[7] && typeof params[7] === 'string' && !params[8]) {
+          newAlert.category = params[7];
+          newAlert.contact_info = params[8];
+        }
+
+        setAlerts(prevAlerts => [...prevAlerts, newAlert]);
+        return Promise.resolve({ success: true, data: [] });
+    }
+
+  // Handle UPDATE queries for simple status changes like marking resolved/found
+  if (upperQuery.startsWith('UPDATE')) {
+    // Expected usage: UPDATE alerts SET active = ? WHERE id = ?
+    try {
+      const [activeValue, id] = params;
+      setAlerts(prevAlerts => prevAlerts.map(a => a.id === id ? { ...a, active: !!activeValue, status: (!!activeValue ? a.status : 'found') } : a));
+      return Promise.resolve({ success: true, data: [] });
+    } catch (e) {
+      return Promise.resolve({ success: false, error: 'Malformed UPDATE params' });
     }
   }
 
-  const createEmbedding = async (text) => {
-    try {
-      const response = await fetch('https://builder.empromptu.ai/api_tools/text_embedder', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer 5254d3137bc61704d35e86e9e22c6bc6',
-          'X-Generated-App-ID': '7f6707a3-47ec-40c3-ad3f-1eb7f4da4ffb',
-          'X-Usage-Key': 'cbdf28b6a6e122cf39846203916f8199'
-        },
-        body: JSON.stringify({ text })
-      })
+    // Handle SELECT queries
+    if (upperQuery.startsWith('SELECT')) {
+      let data = [...alerts];
 
-      const result = await response.json()
-      return result.value
-    } catch (error) {
-      console.error('Embedding creation error:', error)
-      return null
+      // If caller provided a WHERE alert_type = ? clause with params, filter by that type
+      try {
+        if (upperQuery.includes('WHERE') && params && params.length && upperQuery.includes('ALERT_TYPE')) {
+          const requestedType = params[0]
+          data = data.filter(a => a.alert_type === requestedType)
+        }
+      } catch (e) {
+        // ignore and return unfiltered data
+      }
+
+      // If the query includes the specific ORDER BY clause, sort the data
+      if (upperQuery.includes('ORDER BY')) {
+        const severityOrder = { critical: 1, high: 2, medium: 3, low: 4 };
+        data.sort((a, b) => {
+          const severityA = severityOrder[a.severity] || 5;
+          const severityB = severityOrder[b.severity] || 5;
+          if (severityA !== severityB) {
+            return severityA - severityB; // Sort by severity first
+          }
+          // If severity is the same, sort by date descending
+          return new Date(b.created_at) - new Date(a.created_at);
+        });
+      }
+      
+      return Promise.resolve({ success: true, data });
     }
-  }
+    
+    // Default fallback for any other query type
+    return Promise.resolve({ success: false, error: 'Unsupported query type' });
+  };
 
   return (
-    <DatabaseContext.Provider value={{ executeQuery, createEmbedding }}>
+    <DatabaseContext.Provider value={{ executeQuery }}>
       {children}
     </DatabaseContext.Provider>
-  )
-}
+  );
+};
+
