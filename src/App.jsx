@@ -35,7 +35,7 @@ function App() {
               <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
               
               <main className="flex-1 lg:ml-64 transition-all duration-300">
-                <div className="p-4 lg:p-8">
+                  <div className="px-2 py-2 lg:px-3 lg:py-4">
                   <Routes>
                     <Route path="/" element={<Home />} />
                     <Route path="/lost-found" element={<LostAndFound />} />
